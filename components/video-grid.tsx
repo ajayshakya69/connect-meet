@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 interface Participant {
-  id: string
-  name: string
-  isYou?: boolean
-  isScreenSharing?: boolean
+  id: string;
+  name: string;
+  isYou?: boolean;
+  isScreenSharing?: boolean;
 }
 
 interface VideoGridProps {
-  participants: Participant[]
-  userName: string
-  cameraOff: boolean
-  isScreenSharing: boolean
-  screenShareParticipant?: Participant
+  participants: Participant[];
+  userName: string;
+  cameraOff: boolean;
+  isScreenSharing: boolean;
+  screenShareParticipant?: Participant;
 }
 
 export default function VideoGrid({
@@ -29,10 +29,16 @@ export default function VideoGrid({
         <div className="flex-1 rounded-xl overflow-hidden border-2 border-primary/50 bg-black">
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
             <div className="flex flex-col items-center gap-4">
-              <svg className="w-20 h-20 text-primary/50" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-20 h-20 text-primary/50"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12zm-8-3l-4-5h3V6h2v3h3l-4 5z" />
               </svg>
-              <p className="text-muted-foreground">{screenShareParticipant.name}'s screen</p>
+              <p className="text-muted-foreground">
+                {screenShareParticipant.name}'s screen
+              </p>
             </div>
           </div>
         </div>
@@ -47,7 +53,11 @@ export default function VideoGrid({
               <div className="absolute inset-0 flex items-center justify-center">
                 {cameraOff && participant.isYou ? (
                   <div className="flex items-center justify-center w-full h-full">
-                    <svg className="w-6 h-6 text-primary/50" fill="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-6 h-6 text-primary/50"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
@@ -64,10 +74,17 @@ export default function VideoGrid({
           ))}
         </div>
       </div>
-    )
+    );
   }
 
-  const gridCols = participants.length <= 1 ? 1 : participants.length <= 4 ? 2 : participants.length <= 9 ? 3 : 4
+  const gridCols =
+    participants.length <= 1
+      ? 1
+      : participants.length <= 4
+        ? 2
+        : participants.length <= 9
+          ? 3
+          : 4;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 bg-gradient-to-br from-background to-secondary overflow-auto">
@@ -89,12 +106,18 @@ export default function VideoGrid({
               {cameraOff && participant.isYou ? (
                 <div className="flex flex-col items-center gap-2 sm:gap-4">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-6 h-6 sm:w-8 sm:h-8 text-primary"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path d="M3 21v-2a6 6 0 0112 0v2" />
                     </svg>
                   </div>
-                  <span className="text-xs sm:text-sm text-muted-foreground">Camera off</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">
+                    Camera off
+                  </span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 sm:gap-4">
@@ -120,7 +143,11 @@ export default function VideoGrid({
 
             {/* Audio Indicator */}
             <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-              <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-3 h-3 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
               </svg>
             </div>
@@ -128,5 +155,5 @@ export default function VideoGrid({
         ))}
       </div>
     </div>
-  )
+  );
 }

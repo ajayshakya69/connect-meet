@@ -52,14 +52,47 @@ export default function RemoteParticipants({
     }
   }, [mainParticipantId]);
 
+  console.log({ Remote_stream: remoteStreams });
+
   // Helper to get remote stream for a participant
-  const getRemoteStream = (participantId: string) =>
-    remoteStreams?.find((r: any) => r.participantId === participantId)
-      ?.stream || null;
+  const getRemoteStream = (participantId: string) => {
+    if (!remoteStreams) return null;
+    return remoteStreams;
+  };
 
   return (
     <div className="bg-black/50 border-t border-border h-28 sm:h-32 md:h-36 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 relative group">
       {/* Left Scroll Button */}
+
+      <div
+        onClick={() => onSelectParticipant("0")}
+        className={`relative shrink-0 cursor-pointer transition-all duration-300 rounded-lg overflow-hidden border-2 h-24 sm:h-28 md:h-32 w-32 sm:w-36 md:w-40 group/card ${
+          mainParticipantId === "0"
+            ? "border-primary ring-2 ring-primary"
+            : "border-border hover:border-primary/50"
+        }`}
+        data-participant-id="0"
+      >
+        {remoteStreams ? (
+          <>
+            <video
+              ref={(video) => {
+                if (video && remoteStreams) video.srcObject = remoteStreams;
+              }}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover bg-black"
+            />
+          </>
+        ) : (
+          // ❌ fallback if no local video
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-900">
+            <span className="text-white text-lg font-bold">You</span>
+          </div>
+        )}
+      </div>
+
       {participants.length > 3 && (
         <button
           onClick={() => handleScroll("left")}
@@ -86,15 +119,17 @@ export default function RemoteParticipants({
         data-participant-id="0"
       >
         {videoStream ? (
-          <video
-            ref={(video) => {
-              if (video && videoStream) video.srcObject = videoStream;
-            }}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover bg-black"
-          />
+          <>
+            <video
+              ref={(video) => {
+                if (video && videoStream) video.srcObject = videoStream;
+              }}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover bg-black"
+            />
+          </>
         ) : (
           // ❌ fallback if no local video
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-900">

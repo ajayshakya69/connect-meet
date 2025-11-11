@@ -2,40 +2,32 @@
 import { useEffect, useState } from "react";
 import { WebRtcConext } from "./webrtc.context";
 import { RemoteStream } from "./webrtc.types";
+import { connection } from "next/server";
 
 export function WebRTCProvider({ children }: { children: React.ReactNode }) {
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<RemoteStream[] | null>(
-    null,
-  );
-
-  // ✅ Properly typed states
+  const [remoteStreams, setRemoteStreams] = useState<MediaStream | null>(null);
   const [offer, setOffer] = useState<RTCSessionDescriptionInit | null>(null);
   const [answer, setAnswer] = useState<RTCSessionDescriptionInit | null>(null);
-
   const [peerConnection, setPeerConnection] =
     useState<RTCPeerConnection | null>(null);
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [cameraOff, setCameraOff] = useState(true);
 
-  async function getVideoStream() {
+  // ✅ Get user media (always adds tracks when peerConnection is ready)
+  async function getVideoStream(connection?: RTCPeerConnection) {
     try {
-      if (!cameraOff && !isMuted) {
-        setVideoStream(null);
-        return;
-      }
-
-      const constraints = { video: cameraOff, audio: isMuted };
+      const constraints = { video: true, audio: true };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      if (peerConnection) {
-        stream
-          .getTracks()
-          .forEach((track) => peerConnection.addTrack(track, stream));
-      }
-
       setVideoStream(stream);
+
+      // If peer connection available, add tracks
+      if (connection) {
+        stream.getTracks().forEach((track) => {
+          connection.addTrack(track, stream);
+        });
+      }
     } catch (err) {
       console.error("Error accessing media devices:", err);
     }
@@ -48,7 +40,7 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
     if (!peerConnection) return;
     const offerDesc = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offerDesc);
-    console.log("offer created", { offerDesc });
+    console.log("📤 Offer created:", offerDesc);
     setOffer(offerDesc);
   }
 
@@ -60,7 +52,7 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
       );
       const answerDesc = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answerDesc);
-      console.log("offer added and answer created ", { offer, answerDesc });
+      console.log("📩 Answer created:", answerDesc);
       setAnswer(answerDesc);
     } catch (err) {
       console.error("Error creating answer:", err);
@@ -70,38 +62,38 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
   async function handleAnswer() {
     if (!peerConnection || !answer) return;
     try {
-      const ansadded = await peerConnection.setRemoteDescription(
+      await peerConnection.setRemoteDescription(
         new RTCSessionDescription(answer),
       );
-      console.log("anwer added", { ansadded });
+      console.log("✅ Answer applied:", answer);
     } catch (err) {
       console.error("Error handling answer:", err);
     }
   }
 
-  // ✅ Create peer connection
   useEffect(() => {
     const configuration: RTCConfiguration = {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [
+        { urls: "stun:stun.relay.metered.ca:80" },
+        {
+          urls: "turn:global.relay.metered.ca:443?transport=tcp",
+          username: "2ad699eea1f2f61b1f11958b",
+          credential: "5tcqmBTXblTRGu/p",
+        },
+      ],
     };
+
     const connection = new RTCPeerConnection(configuration);
 
     connection.ontrack = (event) => {
       const stream = event.streams[0];
-
       console.log({ remotestream: stream });
       if (!stream) return;
-
-      setRemoteStreams((prev) => {
-        const id = stream.id;
-        const alreadyAdded = prev?.some((r) => r.stream.id === id);
-        if (alreadyAdded) return prev;
-        return [...(prev || []), { participantId: id, stream }];
-      });
+      setRemoteStreams(stream);
     };
 
     connection.onconnectionstatechange = () => {
-      console.log("Connection state changed:", connection.connectionState);
+      console.log("🔁 Connection state:", connection.connectionState);
       if (connection.connectionState === "connected")
         console.log("✅ Peers connected!");
       if (connection.connectionState === "failed")
@@ -110,14 +102,15 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
 
     setPeerConnection(connection);
 
-    return () => {
-      connection.close();
-    };
+    // ✅ Wait a moment so peerConnection is definitely set
+    getVideoStream(connection);
+
+    return () => connection.close();
   }, []);
 
   useEffect(() => {
     getVideoStream();
-  }, [cameraOff, isMuted]);
+  }, [connection]);
 
   return (
     <WebRtcConext.Provider

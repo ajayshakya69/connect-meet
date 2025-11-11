@@ -1,6 +1,6 @@
 export type WebRTCContextType = {
   videoStream: MediaStream | null;
-  remoteStreams: RemoteStream[] | null;
+  remoteStreams: MediaStream | null;
 
   offer: RTCSessionDescriptionInit | null;
   answer: RTCSessionDescriptionInit | null;
