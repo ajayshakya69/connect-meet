@@ -1,8 +1,7 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { WebRtcConext } from "./webrtc.context";
-import { RemoteStream } from "./webrtc.types";
-import { connection } from "next/server";
 
 export function WebRTCProvider({ children }: { children: React.ReactNode }) {
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
@@ -15,64 +14,94 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState(true);
   const [cameraOff, setCameraOff] = useState(true);
 
-  // ✅ Get user media (always adds tracks when peerConnection is ready)
-  async function getVideoStream(connection?: RTCPeerConnection) {
+  // -------------------------------
+  //   GET USER MEDIA ONCE ONLY
+  // -------------------------------
+  async function getVideoStream() {
     try {
       const constraints = { video: true, audio: true };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setVideoStream(stream);
 
-      // If peer connection available, add tracks
-      if (connection) {
+      const pc = await startPeerConnection();
+      if (pc) {
+        console.log("peer connection made");
         stream.getTracks().forEach((track) => {
-          connection.addTrack(track, stream);
+          pc.addTrack(track, stream);
         });
       }
+
+      return stream;
     } catch (err) {
       console.error("Error accessing media devices:", err);
     }
   }
 
-  const toggleVideo = () => setCameraOff((prev) => !prev);
-  const toggleAudio = () => setIsMuted((prev) => !prev);
+  // -------------------------------
+  //   INIT PEER CONNECTION
+  // -------------------------------
 
+  // -------------------------------
+  // CREATE OFFER
+  // -------------------------------
   async function createOffer() {
     if (!peerConnection) return;
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log(
+          "New offer with ICE candidate ",
+          peerConnection.localDescription,
+        );
+
+        setOffer(peerConnection.localDescription);
+      }
+    };
+
     const offerDesc = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offerDesc);
-    console.log("📤 Offer created:", offerDesc);
-    setOffer(offerDesc);
   }
 
+  // -------------------------------
+  // CREATE ANSWER
+  // -------------------------------
   async function createAnswer() {
     if (!peerConnection || !offer) return;
-    try {
-      await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(offer),
-      );
-      const answerDesc = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answerDesc);
-      console.log("📩 Answer created:", answerDesc);
-      setAnswer(answerDesc);
-    } catch (err) {
-      console.error("Error creating answer:", err);
-    }
+
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log(
+          "New ICE candidate answer",
+          peerConnection.localDescription,
+        );
+
+        setAnswer(peerConnection.localDescription);
+      }
+    };
+
+    await peerConnection.setRemoteDescription(offer);
+    const answerDesc = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answerDesc);
   }
 
+  // -------------------------------
+  // HANDLE ANSWER
+  // -------------------------------
   async function handleAnswer() {
     if (!peerConnection || !answer) return;
-    try {
-      await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(answer),
-      );
-      console.log("✅ Answer applied:", answer);
-    } catch (err) {
-      console.error("Error handling answer:", err);
-    }
+
+    await peerConnection.setRemoteDescription(answer);
   }
 
+  // -------------------------------
+  // GET MEDIA ONCE (not twice)
+  // -------------------------------
   useEffect(() => {
-    const configuration: RTCConfiguration = {
+    getVideoStream();
+  }, []);
+
+  async function startPeerConnection() {
+    const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.relay.metered.ca:80" },
         {
@@ -81,36 +110,18 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
           credential: "5tcqmBTXblTRGu/p",
         },
       ],
-    };
+    });
 
-    const connection = new RTCPeerConnection(configuration);
-
-    connection.ontrack = (event) => {
+    // Receive remote tracks
+    pc.ontrack = (event) => {
       const stream = event.streams[0];
-      console.log({ remotestream: stream });
-      if (!stream) return;
+      console.log("REMOTE STREAM RECEIVED", stream);
       setRemoteStreams(stream);
     };
 
-    connection.onconnectionstatechange = () => {
-      console.log("🔁 Connection state:", connection.connectionState);
-      if (connection.connectionState === "connected")
-        console.log("✅ Peers connected!");
-      if (connection.connectionState === "failed")
-        console.warn("❌ ICE negotiation failed.");
-    };
-
-    setPeerConnection(connection);
-
-    // ✅ Wait a moment so peerConnection is definitely set
-    getVideoStream(connection);
-
-    return () => connection.close();
-  }, []);
-
-  useEffect(() => {
-    getVideoStream();
-  }, [connection]);
+    setPeerConnection(pc);
+    return pc;
+  }
 
   return (
     <WebRtcConext.Provider
@@ -126,8 +137,8 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
         videoStream,
         isMuted,
         cameraOff,
-        toggleVideo,
-        toggleAudio,
+        toggleVideo: () => setCameraOff((v) => !v),
+        toggleAudio: () => setIsMuted((v) => !v),
       }}
     >
       {children}
