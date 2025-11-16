@@ -1,6 +1,6 @@
 "use client";
 
-import { useWebRTC } from "@/providers/webrtc-provider/webrtc.hook";
+import { useWebRTC } from "@/providers/webrtcProvider/webrtc.hook";
 import { useEffect, useRef } from "react";
 
 interface Participant {

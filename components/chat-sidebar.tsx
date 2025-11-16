@@ -5,7 +5,7 @@ import type React from "react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useWebRTC } from "@/providers/webrtc-provider/webrtc.hook";
+import { useWebRTC } from "@/providers/webrtcProvider/webrtc.hook";
 
 interface Message {
   id: string;

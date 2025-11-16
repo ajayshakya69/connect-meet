@@ -5,21 +5,9 @@ import VideoStream from "./video-stream";
 import RemoteParticipants from "./remote-participants";
 import ChatSidebar from "./chat-sidebar";
 import MeetingControls from "./meeting-controls";
-import { useWebRTC } from "@/providers/webrtc-provider/webrtc.hook";
+import { useWebRTC } from "@/providers/webrtcProvider/webrtc.hook";
 
-interface MeetingRoomProps {
-  meetingData: {
-    meetingId: string;
-    userName: string;
-    isCreator: boolean;
-  };
-  onLeaveMeeting: () => void;
-}
-
-export default function MeetingRoom({
-  meetingData,
-  onLeaveMeeting,
-}: MeetingRoomProps) {
+export default function MeetingRoom() {
   const [showChat, setShowChat] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
@@ -33,7 +21,7 @@ export default function MeetingRoom({
     { id: "5", name: "Alex Taylor", videoEnabled: true },
   ]);
 
-  const { videoStream, toggleAudio, toggleVideo } = useWebRTC();
+  const { meetingData, handleLeaveMeeting } = useWebRTC();
 
   const toggleChat = () => setShowChat(!showChat);
   const toggleMute = () => setIsMuted(!isMuted);
@@ -60,7 +48,7 @@ export default function MeetingRoom({
               ConnectMeet
             </h2>
             <p className="text-xs text-muted-foreground truncate">
-              {meetingData.meetingId}
+              {meetingData?.meetingId ?? ""}
             </p>
           </div>
         </div>
@@ -78,7 +66,7 @@ export default function MeetingRoom({
         <div className="flex-1 flex flex-col min-w-0">
           <VideoStream
             mainParticipantId={mainParticipantId}
-            currentUserName={meetingData.userName}
+            currentUserName={meetingData?.userName ?? ""}
             participants={participants}
             isMuted={isMuted}
             cameraOff={cameraOff}
@@ -97,7 +85,7 @@ export default function MeetingRoom({
         {showChat && (
           <div className="w-64 sm:w-72 md:w-80 border-l border-border bg-card flex flex-col max-sm:fixed max-sm:right-0 max-sm:top-0 max-sm:bottom-0 max-sm:z-50 max-sm:w-full">
             <ChatSidebar
-              userName={meetingData.userName}
+              userName={meetingData?.userName ?? ""}
               onClose={() => setShowChat(false)}
             />
           </div>
@@ -110,7 +98,7 @@ export default function MeetingRoom({
         isScreenSharing={isScreenSharing}
         onToggleChat={toggleChat}
         onToggleScreenShare={toggleScreenShare}
-        onLeave={onLeaveMeeting}
+        onLeave={handleLeaveMeeting}
         participantCount={participants.length + 1}
       />
     </div>

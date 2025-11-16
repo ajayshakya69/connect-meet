@@ -1,6 +1,6 @@
 "use client";
 
-import { useWebRTC } from "@/providers/webrtc-provider/webrtc.hook";
+import { useWebRTC } from "@/providers/webrtcProvider/webrtc.hook";
 import type React from "react";
 
 import { useState } from "react";

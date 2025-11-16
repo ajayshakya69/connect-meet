@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { WebRTCProvider } from "@/providers/webrtc-provider/webrtc.provider";
+import { WebRTCProvider } from "@/providers/webrtcProvider/webrtc.provider";
+import { SocketProvider } from "@/providers/socketProvider/socket.provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +29,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <WebRTCProvider>{children}</WebRTCProvider>
+        <SocketProvider>
+          <WebRTCProvider>{children}</WebRTCProvider>
+        </SocketProvider>
       </body>
     </html>
   );

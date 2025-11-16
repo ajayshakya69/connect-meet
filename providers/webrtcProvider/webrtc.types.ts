@@ -1,3 +1,17 @@
+// A single remote participant's stream
+export interface RemoteStream {
+  participantId: string;
+  stream: MediaStream;
+}
+
+// Meeting data stored inside provider
+export type MeetingData = {
+  meetingId: string;
+  userName: string;
+  isCreator: boolean;
+} | null;
+
+// Complete typed context
 export type WebRTCContextType = {
   videoStream: MediaStream | null;
   remoteStreams: MediaStream | null;
@@ -20,9 +34,14 @@ export type WebRTCContextType = {
   setAnswer: React.Dispatch<
     React.SetStateAction<RTCSessionDescriptionInit | null>
   >;
-};
 
-export interface RemoteStream {
-  participantId: string;
-  stream: MediaStream;
-}
+  peerConnection: RTCPeerConnection | null;
+
+  // NEW — meeting flow states
+  currentPage: "landing" | "meeting";
+  meetingData: MeetingData;
+
+  handleStartMeeting: () => void;
+  handleJoinMeeting: (meetingId: string) => void;
+  handleLeaveMeeting: () => void;
+};
