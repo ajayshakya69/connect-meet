@@ -29,14 +29,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     sc.on("meeting-joined", ({ meetingId }) => {
       console.log("✅ Meeting joined:", meetingId);
     });
-
-    sc.on("user-joined", ({ userId, meetingId }) => {
-      console.log(`👤 User ${userId} joined meeting ${meetingId}`);
-    });
-
-    return () => {
-      sc.disconnect();
-    };
   }, []);
 
   useEffect(() => {

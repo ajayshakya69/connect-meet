@@ -2,63 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { WebRtcConext } from "./webrtc.context";
-import { RemoteStream, WebRTCContextType, MeetingData } from "./webrtc.types";
+import { WebRTCContextType, MeetingData } from "./webrtc.types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSocket } from "../socketProvider/socket.hook";
 
 export function WebRTCProvider({ children }: { children: React.ReactNode }) {
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<MediaStream | null>(null);
-
-  const [offer, setOffer] = useState<RTCSessionDescriptionInit | null>(null);
-  const [answer, setAnswer] = useState<RTCSessionDescriptionInit | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const [peerConnection, setPeerConnection] =
     useState<RTCPeerConnection | null>(null);
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
-
+  const router = useRouter();
   const params = useSearchParams();
   const meetingId = params.get("meeting_id");
-
-  const router = useRouter();
 
   const { socket } = useSocket();
 
   const [currentPage, setCurrentPage] = useState<"landing" | "meeting">(
     "landing",
   );
-
   const [meetingData, setMeetingData] = useState<MeetingData>(null);
 
-  const handleStartMeeting = async () => {
-    if (!socket) return;
-    router.push(`?meeting_id=${socket.id}`);
-    setCurrentPage("meeting");
-    setMeetingData({
-      meetingId: socket ? socket.id! : "",
-      userName: "Host",
-      isCreator: true,
-    });
-  };
-
-  const handleJoinMeeting = async () => {
-    router.push(`?meeting_id=${meetingId}`);
-    setCurrentPage("meeting");
-    setMeetingData({
-      meetingId: meetingId || "",
-      userName: "Guest",
-      isCreator: false,
-    });
-  };
-
-  const handleLeaveMeeting = () => {
-    setCurrentPage("landing");
-    setMeetingData(null);
-  };
-
-  async function startPeerConnection() {
+  // ---------------------------
+  // CREATE RTCPeerConnection
+  // ---------------------------
+  const createPeerConnection = () => {
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.relay.metered.ca:80" },
@@ -69,97 +38,205 @@ export function WebRTCProvider({ children }: { children: React.ReactNode }) {
         },
       ],
     });
+
     pc.ontrack = (event) => {
-      const stream = event.streams[0];
-      console.log("REMOTE STREAM RECEIVED", stream);
-      setRemoteStreams(stream);
+      console.log("📡 Remote stream received");
+      setRemoteStream(event.streams[0]);
     };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && socket) {
+        socket.emit("ice-candidate", {
+          candidate: event.candidate,
+          to: meetingId,
+        });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log("🔗 Connection state:", pc.connectionState);
+    };
+
     setPeerConnection(pc);
     return pc;
-  }
-  // ------------------------------------
-  //        GET USER MEDIA
-  // ------------------------------------
-  async function getVideoStream() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+  };
 
-      setVideoStream(stream);
+  // ---------------------------
+  // GET USER MEDIA + INIT PC
+  // ---------------------------
+  const startMedia = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
 
-      const pc = await startPeerConnection();
-      if (pc) {
-        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-      }
-    } catch (err) {
-      console.error("Error accessing media devices:", err);
-    }
-  }
+    setVideoStream(stream);
 
-  useEffect(() => {
-    if (currentPage !== "meeting") return;
-    getVideoStream();
-  }, [currentPage]);
+    const pc = createPeerConnection();
 
-  useEffect(() => {
-    setCurrentPage(meetingId ? "meeting" : "landing");
-  }, [meetingId]);
+    stream.getTracks().forEach((track) => {
+      pc.addTrack(track, stream);
+    });
 
-  async function createOffer() {
+    return pc;
+  };
+
+  // ---------------------------
+  // CREATE OFFER (creator)
+  // ---------------------------
+  const createOffer = async () => {
+    console.log("ajay create offer", { peerConnection, socket });
+    if (!peerConnection || !socket) return;
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    socket.emit("webrtc-offer", {
+      offer,
+      to: meetingId,
+    });
+  };
+
+  // ---------------------------
+  // CREATE ANSWER (guest)
+  // ---------------------------
+  const answerOffer = async (
+    offer: RTCSessionDescriptionInit,
+    from: string,
+  ) => {
+    const pc = peerConnection;
+
+    console.log("ajay Answer offer", { pc, socket });
+    if (!pc || !socket) return;
+
+    await pc.setRemoteDescription(offer);
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    socket.emit("webrtc-answer", { answer, to: from });
+  };
+
+  // ---------------------------
+  // HANDLE RECEIVED ANSWER
+  // ---------------------------
+  const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
+    console.log("ajay Handle answer", { peerConnection });
     if (!peerConnection) return;
-
-    peerConnection.onicecandidate = () =>
-      setOffer(peerConnection.localDescription);
-
-    const offerDesc = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offerDesc);
-  }
-
-  async function createAnswer() {
-    if (!peerConnection || !offer) return;
-
-    peerConnection.onicecandidate = () =>
-      setAnswer(peerConnection.localDescription);
-
-    await peerConnection.setRemoteDescription(offer);
-
-    const answerDesc = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answerDesc);
-  }
-
-  async function handleAnswer() {
-    if (!peerConnection || !answer) return;
     await peerConnection.setRemoteDescription(answer);
-  }
+  };
+
+  // =====================================================
+  // SOCKET HANDLERS
+  // =====================================================
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("user-joined", async ({ userId }) => {
+      console.log("👤 User joined:", userId);
+      await createOffer();
+    });
+
+    socket.on("webrtc-offer", async ({ offer, from }) => {
+      console.log("📨 Offer received");
+      await answerOffer(offer, from);
+    });
+
+    socket.on("webrtc-answer", async ({ answer }) => {
+      console.log("📨 Answer received");
+      await handleAnswer(answer);
+    });
+
+    socket.on("ice-candidate", async ({ candidate }) => {
+      if (peerConnection && candidate) {
+        try {
+          await peerConnection.addIceCandidate(candidate);
+        } catch (e) {
+          console.error("❌ Error adding ICE candidate", e);
+        }
+      }
+    });
+
+    return () => {
+      socket.off("user-joined");
+      socket.off("webrtc-offer");
+      socket.off("webrtc-answer");
+      socket.off("ice-candidate");
+    };
+  }, [socket, peerConnection]);
+
+  // =====================================================
+  // MEETING FLOW
+  // =====================================================
+
+  const handleStartMeeting = async () => {
+    console.log("ajay handle start meeting", { socket });
+    if (!socket) return;
+    router.push(`?meeting_id=${socket.id}`);
+
+    setCurrentPage("meeting");
+
+    setMeetingData({
+      meetingId: socket.id!,
+      userName: "Host",
+      isCreator: true,
+    });
+
+    const pc = await startMedia();
+
+    socket.emit("join-or-create-meeting", { meetingId: socket.id });
+  };
+
+  const handleJoinMeeting = async () => {
+    router.push(`?meeting_id=${meetingId}`);
+
+    console.log("ajay handle join meeting", { meetingId, socket });
+    if (!meetingId || !socket) return;
+
+    setCurrentPage("meeting");
+
+    setMeetingData({
+      meetingId,
+      userName: "Guest",
+      isCreator: false,
+    });
+
+    const pc = await startMedia();
+
+    socket.emit("join-or-create-meeting", { meetingId });
+  };
+
+  // AUTO JOIN WHEN URL HAS MEETING ID
+  useEffect(() => {
+    if (!socket || !meetingId) return;
+
+    console.log("🔗 Auto-joining meeting from shared URL:", meetingId);
+
+    setCurrentPage("meeting");
+
+    setMeetingData({
+      meetingId,
+      userName: "Guest",
+      isCreator: false,
+    });
+
+    (async () => {
+      await startMedia();
+      socket.emit("join-or-create-meeting", { meetingId });
+    })();
+  }, [socket, meetingId]);
 
   const value: WebRTCContextType = {
     videoStream,
-    remoteStreams,
-
-    offer,
-    answer,
-
-    createOffer,
-    createAnswer,
-    handleAnswer,
-
-    cameraOff,
-    isMuted,
-    toggleVideo: () => setCameraOff((v) => !v),
-    toggleAudio: () => setIsMuted((v) => !v),
-
-    setOffer,
-    setAnswer,
+    remoteStreams: remoteStream,
 
     peerConnection,
-
-    currentPage,
     meetingData,
+    currentPage,
+
     handleStartMeeting,
     handleJoinMeeting,
-    handleLeaveMeeting,
   };
 
   return (

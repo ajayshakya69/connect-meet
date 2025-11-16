@@ -16,24 +16,24 @@ export type WebRTCContextType = {
   videoStream: MediaStream | null;
   remoteStreams: MediaStream | null;
 
-  offer: RTCSessionDescriptionInit | null;
-  answer: RTCSessionDescriptionInit | null;
+  // offer: RTCSessionDescriptionInit | null;
+  // answer: RTCSessionDescriptionInit | null;
 
-  createOffer: () => Promise<void>;
-  createAnswer: () => Promise<void>;
-  handleAnswer: () => Promise<void>;
+  // createOffer: () => Promise<void>;
+  // createAnswer: () => Promise<void>;
+  // handleAnswer: () => Promise<void>;
 
-  cameraOff: boolean;
-  isMuted: boolean;
-  toggleVideo: () => void;
-  toggleAudio: () => void;
+  // cameraOff: boolean;
+  // isMuted: boolean;
+  // toggleVideo: () => void;
+  // toggleAudio: () => void;
 
-  setOffer: React.Dispatch<
-    React.SetStateAction<RTCSessionDescriptionInit | null>
-  >;
-  setAnswer: React.Dispatch<
-    React.SetStateAction<RTCSessionDescriptionInit | null>
-  >;
+  // setOffer: React.Dispatch<
+  //   React.SetStateAction<RTCSessionDescriptionInit | null>
+  // >;
+  // setAnswer: React.Dispatch<
+  //   React.SetStateAction<RTCSessionDescriptionInit | null>
+  // >;
 
   peerConnection: RTCPeerConnection | null;
 
@@ -43,5 +43,5 @@ export type WebRTCContextType = {
 
   handleStartMeeting: () => void;
   handleJoinMeeting: (meetingId: string) => void;
-  handleLeaveMeeting: () => void;
+  // handleLeaveMeeting: () => void;
 };
